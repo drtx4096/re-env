@@ -1,0 +1,39 @@
+---
+- name: Customize working environment
+  hosts: localhost
+  become: true
+  tasks:
+  
+    - name: Add user to groups
+      user:
+        name: "{{ ansible_env.SUDO_USER }}"
+        append: true
+        groups:
+          - wheel
+
+    - name: Enable passwordless SUDO for the wheel group
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%wheel\s+ALL'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+
+    - name: Install packages with dnf
+      dnf:
+        name:
+          - meld
+
+    - import_tasks: tasks/install-vscode.yaml
+
+    - name: Disable ASLR
+      sysctl:
+        name: kernel.randomize_va_space
+        value: 0
+        state: present
+
+    - name: Install .gdbinit
+      become: true
+      become_user: "{{ ansible_env.SUDO_USER }}"
+      copy:
+        src: files/.gdbinit
+        dest: ~/
